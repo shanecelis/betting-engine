@@ -38,6 +38,9 @@ namespace BettingEngine.Betting
                 .ToList()));
         }
 
+        public static ResultSet Of(params IResult[] results) =>
+          new ResultSet(results);
+
         /// <summary>
         ///     Gets all proper subsets of this <see cref="ResultSet" />.
         /// </summary>
