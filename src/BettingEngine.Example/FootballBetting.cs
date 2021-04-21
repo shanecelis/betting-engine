@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using BettingEngine.Betting;
 
@@ -7,10 +8,12 @@ namespace BettingEngine.Example
     public class FootballBetting
     {
         private readonly SingleChoiceBet _bet;
+        private readonly List<IWager<IResult>> _wagers;
 
         public FootballBetting()
         {
             _bet = new SingleChoiceBet(PossibleResults.AllWithDescription.Select(_ => _.Result));
+            _wagers = new List<IWager<IResult>>();
 
             Console.WriteLine("Bet has been created.");
             Console.WriteLine();
@@ -21,6 +24,7 @@ namespace BettingEngine.Example
             while (true)
             {
                 PrintOdds();
+                Console.WriteLine("[q] Quit and show outcomes");
 
                 // Get wager's expected results.
                 IResult expectedResult;
@@ -30,7 +34,13 @@ namespace BettingEngine.Example
                     Console.Write("> ");
                     try
                     {
-                        var index = int.Parse(Console.ReadLine()?.TrimEnd('\r', '\n'));
+                        string line = Console.ReadLine()?.TrimEnd('\r', '\n');
+                        if (line == "q") {
+                            PrintOutcomes();
+                            return;
+                        }
+
+                        var index = int.Parse(line);
                         expectedResult = PossibleResults.AllWithDescription[index - 1].Result;
                         break;
                     }
@@ -61,7 +71,7 @@ namespace BettingEngine.Example
                     }
                 }
 
-                _bet.AddExpectedResults(expectedResult, stakeValue);
+                _wagers.Add(_bet.AddExpectedResults(expectedResult, stakeValue));
                 Console.WriteLine("Wager has been created.");
                 Console.WriteLine();
             }
@@ -79,7 +89,32 @@ namespace BettingEngine.Example
                     $"[{index + 1}] {description.PadRight(maximumDescriptionLength)} | ${odds:F2} for ${1M:F2}");
                 ++index;
             }
+
         }
+
+      private void PrintOutcomes()
+      {
+        Console.WriteLine("Outcomes:");
+        // var maximumDescriptionLength = PossibleResults.AllWithDescription.Select(_ => _.Description.Length).Max();
+
+        var nameDict = new Dictionary<IResult, string>();
+        foreach (var (_result, _description) in PossibleResults.AllWithDescription)
+          nameDict.Add(_result, _description);
+
+        foreach (var (result, description) in PossibleResults.AllWithDescription)
+        {
+          Console.WriteLine($"If the result is {description}, then ");
+
+          foreach (var wager in _wagers)
+          {
+            var outcome = _bet.GetOutcome(wager, result);
+            if (outcome.Type == OutcomeType.Win)
+              Console.WriteLine($"The wager of {wager.Stake.Value:F2} on {nameDict[wager.ExpectedResults]} receives outcome of {outcome.Type} for {outcome.Winnings:F2}.");
+            else
+              Console.WriteLine($"The wager of {wager.Stake.Value:F2} on {nameDict[wager.ExpectedResults]} receives outcome of {outcome.Type}.");
+          }
+        }
+      }
 
         public static void Main()
         {
